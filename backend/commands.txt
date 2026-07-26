@@ -1,0 +1,4 @@
+ffmpeg -re -stream_loop -1 -i "D:\Python Workspace\Video Analytics\backend\mine1.mp4" -c:v libx264 -preset veryfast -tune zerolatency -f rtsp rtsp://localhost:8554/cam1
+
+better quality-
+ffmpeg -re -stream_loop -1 -i "D:\Python Workspace\Video Analytics\backend\mine1.mp4" -vf "scale=640:360,fps=15" -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -f rtsp rtsp://localhost:8554/cam1
