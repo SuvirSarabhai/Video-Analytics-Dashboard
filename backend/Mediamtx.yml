@@ -5,6 +5,12 @@
 rtspAddress: :8554
 
 hlsAddress: :8888
+hlsAlwaysRemux: yes
+hlsVariant: mpegts
+hlsSegmentDuration: 1s
+hlsSegmentCount: 3
+hlsAllowOrigin: '*'
+
 
 paths:
   cam1:

@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 
 # RTSP streams from MediaMTX
 CAMERAS = {
-    "cam1": "rtsp://localhost:8554/cam1",   # live phone stream
-    "cam2": "rtsp://localhost:8554/cam1",   # mine1.mp4
-    "cam3": "rtsp://localhost:8554/cam1",   # mine2.mp4
-    "cam4": "rtsp://localhost:8554/cam1",   # factory.mp4
+    "cam1": "rtsp://localhost:8554/cam1",   # phone publishes to MediaMTX; Python reads locally
+   # "cam2": "rtsp://localhost:8554/cam1",   # mine1.mp4
+   # "cam3": "rtsp://localhost:8554/cam1",   # mine2.mp4
+   # "cam4": "rtsp://localhost:8554/cam1",   # factory.mp4
 }
 
 # Shared camera state

@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react'
+import Hls from 'hls.js'
+import { useEffect, useRef, useState } from 'react'
 
-const WS_BASE = 'ws://localhost:8000'
+const HLS_BASE = 'http://localhost:8888'
 
-// Cameras that have a real stream (must match camera_state keys in manager.py)
-const LIVE_IDS = ['cam1', 'cam2', 'cam3', 'cam4']
+// Cameras that have a real HLS stream published through MediaMTX
+const LIVE_IDS = ['cam1']
 
 const cameras = [
     { id: 'cam1', location: 'Main Entrance', coords: '28.6139° N, 77.2090° E' },
@@ -24,11 +25,10 @@ const cameras = [
     { id: 'CAM-016', location: 'Rooftop West', coords: '28.6154° N, 77.2120° E' },
 ]
 
-// ── Single camera card ────────────────────────────────────────────────────────
+// ── Single camera card ─────────────────────────────────────────────────────────
 function CameraCard({ cam }) {
-    const canvasRef = useRef(null)
-    const wsRef = useRef(null)
-    const imgRef = useRef(new Image())
+    const videoRef = useRef(null)
+    const hlsRef = useRef(null)
     const [status, setStatus] = useState('offline') // 'offline' | 'connecting' | 'live' | 'error'
 
     const isLive = LIVE_IDS.includes(cam.id)
@@ -36,34 +36,42 @@ function CameraCard({ cam }) {
     useEffect(() => {
         if (!isLive) return
 
+        const video = videoRef.current
+        if (!video) return
+
         setStatus('connecting')
 
-        const ws = new WebSocket(`${WS_BASE}/ws/video/${cam.id}`)
-        ws.binaryType = 'arraybuffer'
-        wsRef.current = ws
+        const src = `${HLS_BASE}/${cam.id}/index.m3u8`
 
-        ws.onopen = () => setStatus('live')
-        ws.onerror = () => setStatus('error')
-        ws.onclose = () => setStatus('offline')
+        if (Hls.isSupported()) {
+            const hls = new Hls({
+                lowLatencyMode: false,      // LL-HLS requires specific H264 settings — keep off
+                maxBufferLength: 10,
+                maxMaxBufferLength: 20,
+                enableWorker: true,
+            })
+            hlsRef.current = hls
 
-        ws.onmessage = (event) => {
-            // event.data is an ArrayBuffer containing a JPEG
-            const blob = new Blob([event.data], { type: 'image/jpeg' })
-            const url = URL.createObjectURL(blob)
+            hls.loadSource(src)
+            hls.attachMedia(video)
 
-            imgRef.current.onload = () => {
-                const canvas = canvasRef.current
-                if (!canvas) return
-                const ctx = canvas.getContext('2d')
-                ctx.drawImage(imgRef.current, 0, 0, canvas.width, canvas.height)
-                URL.revokeObjectURL(url)
+            hls.on(Hls.Events.MANIFEST_PARSED, () => setStatus('live'))
+            hls.on(Hls.Events.ERROR, (_, data) => {
+                if (data.fatal) setStatus('error')
+            })
+
+            return () => {
+                hls.destroy()
+                hlsRef.current = null
+                setStatus('offline')
             }
-            imgRef.current.src = url
         }
 
-        return () => {
-            ws.close()
-            setStatus('offline')
+        // Safari — native HLS support
+        if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = src
+            video.addEventListener('loadedmetadata', () => setStatus('live'))
+            video.addEventListener('error', () => setStatus('error'))
         }
     }, [cam.id, isLive])
 
@@ -91,12 +99,12 @@ function CameraCard({ cam }) {
                 position: 'relative',
                 overflow: 'hidden',
             }}>
-                {/* Canvas — only rendered for live cameras */}
                 {isLive ? (
-                    <canvas
-                        ref={canvasRef}
-                        width={640}
-                        height={360}
+                    <video
+                        ref={videoRef}
+                        autoPlay
+                        muted
+                        playsInline
                         style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
                     />
                 ) : (
@@ -175,7 +183,7 @@ function CameraCard({ cam }) {
     )
 }
 
-// ── Feed page ─────────────────────────────────────────────────────────────────
+// ── Feed page ──────────────────────────────────────────────────────────────────
 export const Feed = () => {
     return (
         <div style={{

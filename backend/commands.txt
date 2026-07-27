@@ -1,4 +1,15 @@
-ffmpeg -re -stream_loop -1 -i "D:\Python Workspace\Video Analytics\backend\mine1.mp4" -c:v libx264 -preset veryfast -tune zerolatency -f rtsp rtsp://localhost:8554/cam1
+# ── cam1 — CORRECT command (TCP transport, baseline H264, no B-frames) ────────
+#
+# -rtsp_transport tcp      → no UDP packet loss, no RTP drops
+# -profile:v baseline      → removes B-frames (fixes co-located POC errors)
+# -tune zerolatency        → no B-frames, minimal buffering
+# -g 50                    → keyframe every 2s at 25fps (good for HLS segments)
+# -pix_fmt yuv420p         → browser-compatible pixel format
+# -preset ultrafast        → fast encode, low CPU
 
-better quality-
-ffmpeg -re -stream_loop -1 -i "D:\Python Workspace\Video Analytics\backend\mine1.mp4" -vf "scale=640:360,fps=15" -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -f rtsp rtsp://localhost:8554/cam1
+ffmpeg -re -stream_loop -1 -i "D:\Python Workspace\Video Analytics\backend\mine1.mp4" -c:v libx264 -preset ultrafast -tune zerolatency -profile:v baseline -level 3.1 -g 50 -pix_fmt yuv420p -an -f rtsp -rtsp_transport tcp rtsp://localhost:8554/cam1
+
+# ── auto-reconnect version (recommended) ──────────────────────────────────────
+while ($true) { ffmpeg -re -stream_loop -1 -i "D:\Python Workspace\Video Analytics\backend\mine1.mp4" -c:v libx264 -preset ultrafast -tune zerolatency -profile:v baseline -level 3.1 -g 50 -pix_fmt yuv420p -an -f rtsp -rtsp_transport tcp rtsp://localhost:8554/cam1; Write-Host "Restarting in 2s..."; Start-Sleep 2 }
+
+ffmpeg -re -stream_loop -1 -i "D:\Python Workspace\Video Analytics\backend\mine1.mp4" -c:v libx264 -preset ultrafast -tune zerolatency -profile:v baseline -level 3.1 -g 50 -pix_fmt yuv420p -an -f rtsp -rtsp_transport tcp rtsp://localhost:8554/cam1
