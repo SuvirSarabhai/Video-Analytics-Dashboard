@@ -4,6 +4,7 @@ import cv2
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from camera.manager import camera_state
+from yolo.detector import alert_queues
 
 router = APIRouter()
 
@@ -45,6 +46,29 @@ async def video_stream(websocket: WebSocket, camera_id: str):
 
     except WebSocketDisconnect:
         print(f"{camera_id} disconnected")
+
+    except Exception as e:
+        print(e)
+
+
+@router.websocket("/ws/alerts/{camera_id}")
+async def alert_stream(websocket: WebSocket, camera_id: str):
+    """Stream YOLO detection events as JSON to the browser."""
+
+    if camera_id not in alert_queues:
+        await websocket.close(code=1008)
+        return
+
+    await websocket.accept()
+
+    try:
+        while True:
+            # Block until the YOLO worker puts a batch of events in the queue
+            events = await alert_queues[camera_id].get()
+            await websocket.send_json(events)
+
+    except WebSocketDisconnect:
+        print(f"[alerts] {camera_id} disconnected")
 
     except Exception as e:
         print(e)
